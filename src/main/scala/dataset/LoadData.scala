@@ -8,6 +8,7 @@ import scala.collection.Map
 
 /**
  * Created by jbalaji on 1/11/16.
+ * This script reads the prepared data files and writes the index and topology files
  */
 
 object LoadData{
@@ -99,10 +100,11 @@ object LoadData{
       graphRDD.foreach(x=>{
         topologyFileWriter.println(x._1+";"+x._3.mkString(" "))
         indexFileWriter.print(x._1+";")
-        indexFileWriter.print(x._2(0)+" "+x._2(1)+" ")
+        indexFileWriter.println(x._2.mkString(" "))
+        /*indexFileWriter.print(x._2(0)+" "+x._2(1)+" ")
         for(i<-2 to x._2.length-1 by 2)
           indexFileWriter.print((x._2(i) << 8 | x._2(i+1)).toShort+" ")
-        indexFileWriter.println
+        indexFileWriter.println*/
       })
 
     }
