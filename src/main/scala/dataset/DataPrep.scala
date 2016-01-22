@@ -40,20 +40,23 @@ object DataPrep{
        .filter(!_.startsWith("#"))
        .map(_+"\t"+Random.nextInt(8))
 
+     edgeRDD.saveAsTextFile(Constants.EdgeFilePath)
 
 
    edgeRDD.flatMap(line=>{
+
          val parts = line.split("\t")
          if(parts.length==3)
            List(parts.head,parts(1))
+
          else
-           "null"
-       }).filter(_!="null")
+           None
+       })
        .distinct()
        .map(_+"\t"+Random.nextInt(8)).saveAsTextFile(Constants.NodeFilePath)
 
 
-    edgeRDD.saveAsTextFile(Constants.EdgeFilePath)
+
 
 
   }

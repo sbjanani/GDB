@@ -44,7 +44,6 @@ object LoadData{
 
     val graphRDD = sc.wholeTextFiles(Constants.EdgeFilePath).flatMap(x=>{
 
-
       if(x._2.length>0){
         x._2.split("\n").flatMap(entry=>{
           val parts = entry.split("\t")
@@ -67,11 +66,15 @@ object LoadData{
           .groupBy(_._1)
           .mapValues(y=>y.map(_._2.toInt)))
 
+      val out = outInGroup.getOrElse("o",Nil)
+      val in = outInGroup.getOrElse("i",Nil)
+
+
       val indexArray = new Array[Byte](2+(4*Constants.NumberOfEdgeTypes))
       indexArray(0)=0
       indexArray(1) = nodeMapRDD(nodeID.toInt)
 
-     val neighborList:List[List[Int]] =  for(index <- (2 until indexArray.length-5 by 4).toList ) yield {
+     val neighborList:List[List[Int]] =  for(index <- (2 until indexArray.length-3 by 4).toList ) yield {
 
         val outList:List[Int] = outInGroup.getOrElse("o",Map()).getOrElse((index/4).toString,List())
           indexArray(index) = (outList.length.toShort >>> 8).toByte
@@ -89,6 +92,7 @@ object LoadData{
 
         }
 
+     // println((nodeID,indexArray,neighborList.flatten).toString())
       (nodeID,indexArray,neighborList.flatten)
     }).collect().sortBy(_._1)
 
