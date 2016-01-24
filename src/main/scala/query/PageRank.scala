@@ -68,7 +68,8 @@ object PageRank{
 
     var pageRankVector:Array[(Int,Double)] = index
       //.filter(x=>filterVertexLocal(x._1))
-      .toArray.map(x=>(x._1,seedPR))
+      .toArray
+      .map(x=>(x._1,seedPR))
 
    // var pageRankVector:Array[(Int,Double)] = for(x <- index.toArray) yield {(x._1,seedPR)}
 
@@ -102,7 +103,7 @@ object PageRank{
 
       }*/
 
-      def nextVertexList(topologyIter:Iterator[(Int,Array[Int])],vertexIter:Iterator[(Int,Double)]):Iterator[(Int,Double)] ={
+      def nextVertexList(topologyIter:Iterator[(Int,Array[Int])]):Iterator[(Int,Double)] ={
 
         // get the neighbors for the current vertex
         def computePR(neighborList:Array[Int],edgeType:Byte,start:Int,count:Int):Double={
@@ -144,8 +145,6 @@ object PageRank{
           }
         }
 
-
-
         /*vertexIter.map(vertex=>{
 
           // println("Vertex = "+vertex)
@@ -155,45 +154,28 @@ object PageRank{
 
         })*/
 
-        val topologyMap = topologyIter.toMap
-        vertexIter.map(vertex=>{
+        topologyIter.map(vertex=>{
           //println("Vertex "+vertex._1)
           val neighborPR = for(i<-(0 to Constants.NumberOfEdgeTypes-1).toList)yield{
             val (start,count) = getStartAndCount(vertex._1,i.toByte,"i")
-            computePR(topologyMap.getOrElse(vertex._1,Array()),i.toByte,start,count)
+            computePR(vertex._2,i.toByte,start,count)
           }
           (vertex._1,0.15+(0.85*neighborPR.sum))
         })
 
-
-
-
       }
 
-     // println("before")
-
-    //  pageRankVector.foreach(x=>println(x._1+"  "+x._2+" iteration "+iteration))
-
-      val vList = sc.parallelize(pageRankVector).partitionBy(new HashPartitioner(2))
-
-      val pageRankVector_temp = topology.zipPartitions(vList)(nextVertexList).collect()
-
-
+      val pageRankVector_temp = topology.mapPartitions(nextVertexList).collect()
 
       iteration += 1
-     // println("after")
-      pageRankVector_temp.foreach(x=>println(x._1+"  "+x._2+" iteration = "+iteration))
-      delta = pageRankVector.zip(pageRankVector_temp).map(x=>Math.abs(x._1._2-x._2._2)).sum
 
-      println("delta = "+delta+" iteration = "+iteration)
-      // println("Iteration "+queryIndex+" result = ")
-      // vList.foreach(x=>println(x._1+"->"+x._2))
+      delta = pageRankVector.zip(pageRankVector_temp).map(x=>Math.abs(x._1._2-x._2._2)).sum
 
       pageRankVector = pageRankVector_temp
     }
 
 
-    //pageRankVector.foreach(x=>println(x._1+"  "+x._2+" iter "+iteration))
+    pageRankVector.foreach(x=>println(x._1+"  "+x._2+" iter "+iteration))
   }
 
 
