@@ -25,8 +25,6 @@ object PathQuery{
 
     val query = List((6,"o",7),(6,"o",1),(0,"o",4))
 
-    val test = sc.broadcast(query)
-
     // map containing node type
     val nodeTypeMap:Map[Byte,Iterable[Int]] = sc.textFile(Constants.NodeFilePath).map(line=>{
       val parts = line.split("\t")
