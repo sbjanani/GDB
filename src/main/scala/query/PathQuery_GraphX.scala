@@ -22,7 +22,7 @@ object PathQuery_GraphX {
 
     val sc = new SparkContext(conf)
 
-    val query = List((6, "o", 7), (6, "o", 1), (0, "o", 2),(2,"o",0),(7,"o",1))
+    val query = List((6, "o", 7), (6, "o", 1), (0, "o", 2),(2,"o",0))
 
     val vertices: RDD[(VertexId, Byte)] = sc.textFile(Constants.NodeFilePath)
       .map(line => {
@@ -51,7 +51,7 @@ object PathQuery_GraphX {
       (vType, List(Queue(Long.MinValue)), 0)
     } }
 
-    //newGraph.vertices.collect.foreach(x=>println(x._1+" type ="+x._2._1.toByte+" "+x._2._2.toString()+" "+x._2._3))
+    newGraph.vertices.collect.foreach(x=>println(x._1+" type ="+x._2._1.toByte+" "+x._2._2.toString()+" "+x._2._3))
 
     val initialMessage = (List(Queue(Long.MinValue)), 0)
 
