@@ -24,8 +24,8 @@ object PageRank_GraphX {
     val sc = new SparkContext(conf)
 
 
-
-    val vertices: RDD[(VertexId, Byte)] = sc.textFile(Constants.NodeFilePath)
+val numOfProcessors = 2
+    val vertices: RDD[(VertexId, Byte)] = sc.textFile(Constants.NodeFilePath,numOfProcessors)
       .map(line => {
         val parts = line.split("\t")
         if (parts.length == 2)
@@ -34,7 +34,7 @@ object PageRank_GraphX {
           null
       }).filter(_ != null)
 
-    val edges: RDD[Edge[Byte]] = sc.textFile(Constants.EdgeFilePath)
+    val edges: RDD[Edge[Byte]] = sc.textFile(Constants.EdgeFilePath,numOfProcessors)
       .map(line => {
         val parts = line.split("\t")
         if (parts.length == 3)

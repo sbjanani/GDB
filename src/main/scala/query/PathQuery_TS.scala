@@ -2,7 +2,9 @@ import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}
 import _root_.util.Constants
+import org.apache.spark.broadcast.Broadcast
 
+import scala.collection.Map
 import scala.collection.immutable.Queue
 import scala.util.Random
 
@@ -11,13 +13,13 @@ import scala.util.Random
  * Created by jbalaji on 1/22/16.
  */
 
-object PathQuery_GraphX {
+object PathQuery_TS{
 
 
   def main(args: Array[String]) {
     val conf: SparkConf = new SparkConf()
-      .setAppName("GDB_GX")
-      /*.setMaster("local[2]")
+      .setAppName("GDB_TS")
+     /* .setMaster("local[2]")
       .setExecutorEnv("--driver-memory", "4g")
       .setExecutorEnv("spark.executor.memory", "2g")*/
     .set("spark.kyroserializer.buffer.max", "2048")
@@ -27,16 +29,24 @@ object PathQuery_GraphX {
 
     val sc = new SparkContext(conf)
 
-    // val qLength = args(0).toInt
+   // println("qlength = "+args(0)+" num of processors = "+args(1))
 
-    /*val query:List[(Int,String,Int)] = for(i<- List.range(0,qLength)) yield {
-       (Random.nextInt(Constants.NumberOfNodeTypes),"o",Random.nextInt(Constants.NumberOfEdgeTypes))
-     }*/
+   // val qLength = args(0).toInt
+
+   /*val query:List[(Int,String,Int)] = for(i<- List.range(0,qLength)) yield {
+      (Random.nextInt(Constants.NumberOfNodeTypes),"o",Random.nextInt(Constants.NumberOfEdgeTypes))
+    }*/
 
     val query = List((2,"o",1),(4,"o",4),(6,"o",1),(0,"o",5),(3,"o",7),(4,"0",2))
 
-   // val numOfProcessors = 10
-     val numOfProcessors = args(0).toInt
+    //val numOfProcessors = 10
+    val numOfProcessors = args(0).toInt
+
+    val index = sc.textFile(Constants.IndexFilePath,numOfProcessors).map(line=>{
+      val parts = line.split(";")
+      (parts(0).toInt,parts(1).split(" ").map(_.toByte))
+
+    }).collectAsMap()
 
     val vertices: RDD[(VertexId, Byte)] = sc.textFile(Constants.NodeFilePath,numOfProcessors)
       .map(line => {
@@ -61,13 +71,16 @@ object PathQuery_GraphX {
 
     // create new graph
     val newGraph: Graph[(Byte, List[Queue[Long]], Int), Byte] = graph.mapVertices { (vId, vType) => {
-     //println("vid ="+vId+" vType= "+vType+" "+(vType, List(Queue(Long.MinValue)), 0).toString())
+      //println("vid ="+vId+" vType= "+vType+" "+(vType, List(Queue(Long.MinValue)), 0).toString())
       (vType, List(Queue(Long.MinValue)), 0)
     } }
 
     newGraph.cache()
 
-   // newGraph.vertices.collect.foreach(x=>println(x._1+" type ="+x._2._1.toByte+" "+x._2._2.toString()+" "+x._2._3))
+    val broadCastIndex = sc.broadcast(index)
+
+
+    // newGraph.vertices.collect.foreach(x=>println(x._1+" type ="+x._2._1.toByte+" "+x._2._2.toString()+" "+x._2._3))
 
     val initialMessage = (List(Queue(Long.MinValue)), 0)
 
@@ -77,13 +90,13 @@ object PathQuery_GraphX {
 
       if (attr._1 == query(msg._2)._1) {
         if(msg._2==0){
-         // println("id="+id+"first if iter = "+msg._2+" query type= "+query(msg._2)._1+" "+(attr._1, List(Queue(id.toLong)), msg._2).toString())
+          // println("id="+id+"first if iter = "+msg._2+" query type= "+query(msg._2)._1+" "+(attr._1, List(Queue(id.toLong)), msg._2).toString())
           (attr._1, List(Queue(id.toLong)), msg._2)
         }
 
         else{
           val newList = for(q<-msg._1)yield q.enqueue(id.toLong)
-         // newList.foreach(x=>println(id+" "+x.toString()))
+          // newList.foreach(x=>println(id+" "+x.toString()))
           //println("id="+id+" Not first if iter = "+msg._2+" query type= "+query(msg._2)._1+" "+(attr._1, newList, msg._2).toString())
           (attr._1, newList, msg._2)
         }
@@ -100,7 +113,41 @@ object PathQuery_GraphX {
 
     def sendMessage(edge: EdgeTriplet[(Byte, List[Queue[Long]], Int), Byte]): Iterator[(VertexId, (List[Queue[Long]], Int))] = {
 
-      if (edge.srcAttr._3<query.size && edge.attr == query(edge.srcAttr._3)._3 && edge.srcAttr._2!=List(Queue())){
+
+      def filterVertex(vertexArray:Array[Byte],currentQuery:(Int,String,Int)):Boolean={
+        // println("In filter vertex map : vertex "+vertex)
+        //println("next query ="+currentQuery)
+        //println("Vertex Array ="+vertexArray.mkString(" "))
+        if(vertexArray.length>0 && vertexArray(1) == currentQuery._1.toByte){
+          if(currentQuery._2.equalsIgnoreCase("o")){
+            val i = (4*currentQuery._3)+2
+            if(vertexArray(i)==0 && vertexArray(i+1)==0)
+              false
+            else
+              true
+          }
+          else if(currentQuery._2.equalsIgnoreCase("i")){
+            val i = (4*currentQuery._3)+4
+            if(vertexArray(i)==0 && vertexArray(i+1)==0)
+              false
+            else
+              true
+          }
+          else{
+            val i = (4*currentQuery._3)+2
+            if(vertexArray(i)==0 && vertexArray(i+1)==0 && vertexArray(i+2)==0 && vertexArray(i+3)==0)
+              false
+            else
+              true
+          }
+        }
+        else
+          false
+
+      }
+
+
+      if (edge.srcAttr._3 < query.length -1 && edge.srcAttr._3<query.size && edge.attr == query(edge.srcAttr._3)._3 && edge.srcAttr._2!=List(Queue()) && filterVertex(broadCastIndex.value(edge.dstId.toInt),query(edge.srcAttr._3 + 1))){
         //println("node id"+edge.srcId+" destination="+edge.dstId+" node queue ="+edge.srcAttr._2.toString()+" iteration="+(edge.srcAttr._3+1)+" edge typ="+edge.attr)
         Iterator((edge.dstId, (edge.srcAttr._2, edge.srcAttr._3+1)))
       }
@@ -114,17 +161,17 @@ object PathQuery_GraphX {
       (msg1._1 ++ msg2._1,Math.max(msg1._2,msg2._2))
     }
 
-   val res = Pregel(newGraph,initialMessage,query.length-1)(vertexProgram,sendMessage,combineMessage)
+    val res = Pregel(newGraph,initialMessage,query.length-1)(vertexProgram,x=>sendMessage(x),combineMessage)
 
    // println("*********Result set size = "+res.vertices.collect.size)
-   /*println("*********Result set size = "+res.vertices.collect
-     .filter(_._2._3==query.size-1)//.size+"************")
-      .foreach(x=>{
-      println("Vertex "+x._1)
-      x._2._2.foreach(y=> {
-        print(y.mkString(" ")+";")
-        println
-      })
-    }))*/
+      /*.filter(_._2._3==query.size-1)//.size)
+     .foreach(x=>{
+     println("Vertex "+x._1+" step ="+x._2._3)
+
+     x._2._2.foreach(y=> {
+       print(y.mkString(" ")+";")
+       println
+     })
+   }))*/
   }
 }
