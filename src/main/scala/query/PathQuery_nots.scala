@@ -36,7 +36,7 @@ object PathQuery_nots{
        (Random.nextInt(Constants.NumberOfNodeTypes),"o",Random.nextInt(Constants.NumberOfEdgeTypes))
      }*/
 
-    val query = List((2,"o",1),(4,"o",4),(6,"o",1),(0,"o",5))//,(3,"o",7),(4,"0",2))
+    val query = List((2,"o",1),(4,"o",4),(6,"o",5),(3,"o",7),(5,"o",6))//,(1,"o",1))
 
     //val numOfProcessors = 10
      val numOfProcessors = args(0).toInt
@@ -73,7 +73,7 @@ object PathQuery_nots{
 
      //("Seed vertices = "+seedVertex)
 
-    for(queryIndex <- 0 to query.length-1 if !vList.isEmpty()){
+    for(queryIndex <- 0 to query.length-2 if !vList.isEmpty()){
 
       val currentQuery = query(queryIndex)
 
@@ -163,7 +163,7 @@ object PathQuery_nots{
 
       }
 
-      val result = joinedRDD.join(vList).mapPartitions(nextVertexList,true)
+      val result = joinedRDD.join(vList).mapPartitions(nextVertexList)
       vList = result.partitionBy(new HashPartitioner(numOfProcessors))
 
        //println("Iteration "+queryIndex+" result = "+vList.foreach(x=>println(x._1+"->"+x._2)))

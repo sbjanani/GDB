@@ -33,7 +33,7 @@ object PathQuery_GraphX {
        (Random.nextInt(Constants.NumberOfNodeTypes),"o",Random.nextInt(Constants.NumberOfEdgeTypes))
      }*/
 
-    val query = List((2,"o",1),(4,"o",4),(6,"o",1),(0,"o",5),(3,"o",7),(4,"0",2))
+    val query = List((2,"o",1),(4,"o",4),(6,"o",5),(3,"o",7),(5,"o",6))//,(1,"o",1))
 
    // val numOfProcessors = 10
      val numOfProcessors = args(0).toInt
